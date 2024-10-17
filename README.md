@@ -16,7 +16,8 @@ From the terminal in the go-similarity-reports directory, run: \
 
 ## Access the Similarity Reports:
 Once the server is running, you can access the similarity reports by navigating to:
-http://localhost:8080/api/similarity-reports
+http://localhost:8080/api/similarity-reports?directory=./your-directory
+
 
 ## Example of a JSON Response
 When you access the /api/similarity-reports endpoint, you should receive a response similar to the following (assuming there are feature files with steps):
@@ -103,6 +104,6 @@ These three metrics provide diverse perspectives on similarity, allowing you to 
 
 
 ## Test Journey Hierarchy Endpoint
-http://localhost:8080/api/test-journeys
+http://localhost:8080/api/test-journeys?directory=./your-directory
 
 Produces a hierarchy Data Structure: A new JourneyNode struct was created to represent each test and its steps in a hierarchical structure for use with D3.js.
