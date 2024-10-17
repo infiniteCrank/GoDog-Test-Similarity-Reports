@@ -27,6 +27,26 @@ type ComparisonEntry struct {
 	TestB      string  `json:"test_b"`
 	Similarity float64 `json:"similarity"`
 }
+type JourneyNode struct {
+	Name     string        `json:"name"`
+	Children []JourneyNode `json:"children,omitempty"`
+}
+
+// Generate test journey hierarchy
+func generateTestJourneys(tests []Test) JourneyNode {
+	root := JourneyNode{Name: "Test Journeys", Children: []JourneyNode{}}
+
+	for _, test := range tests {
+		testNode := JourneyNode{Name: test.Name, Children: []JourneyNode{}}
+		for _, step := range test.Steps {
+			stepNode := JourneyNode{Name: step}
+			testNode.Children = append(testNode.Children, stepNode)
+		}
+		root.Children = append(root.Children, testNode)
+	}
+
+	return root
+}
 
 // Parse feature files in the specified directory
 func parseFeatureFiles(path string) ([]Test, error) {
@@ -135,6 +155,22 @@ func max(a, b int) int {
 	return b
 }
 
+// Endpoint to get test journeys
+func getTestJourneys(w http.ResponseWriter, _ *http.Request) {
+	testsPath := "./tdata" // Adjust this path as necessary
+	tests, err := parseFeatureFiles(testsPath)
+	if err != nil {
+		http.Error(w, "Error parsing tests: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	testJourneys := generateTestJourneys(tests)
+
+	// Set header and return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(testJourneys)
+}
+
 // Endpoint to get similarity reports
 func getSimilarityReports(w http.ResponseWriter, r *http.Request) {
 	testsPath := "./tdata" // Adjust this path as necessary
@@ -197,6 +233,7 @@ func getSimilarityReports(w http.ResponseWriter, r *http.Request) {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/similarity-reports", getSimilarityReports).Methods("GET")
+	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET")
 
 	// Start the server
 	port := "8080"
