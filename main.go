@@ -204,37 +204,49 @@ func LCS(X, Y []string) int {
 	return dp[m][n]
 }
 
-// Calculate Cosine Similarity
 func CosineSimilarity(testA, testB []string) float64 {
-	stepCount := make(map[string]int)
+	// Create frequency maps for steps in both tests
+	stepCountA := make(map[string]int)
+	stepCountB := make(map[string]int)
 
 	for _, step := range testA {
-		stepCount[step]++
+		stepCountA[step]++
 	}
 	for _, step := range testB {
-		stepCount[step]++
+		stepCountB[step]++
 	}
 
+	// Create unique combined set of steps
+	uniqueSteps := make(map[string]bool)
+	for step := range stepCountA {
+		uniqueSteps[step] = true
+	}
+	for step := range stepCountB {
+		uniqueSteps[step] = true
+	}
+
+	// Create vectors based on unique steps
 	var vectorA, vectorB []float64
-	for _, count := range stepCount {
-		vectorA = append(vectorA, float64(count))
-		if count > 1 {
-			vectorB = append(vectorB, float64(count))
-		}
+	for step := range uniqueSteps {
+		vectorA = append(vectorA, float64(stepCountA[step])) // value for test A
+		vectorB = append(vectorB, float64(stepCountB[step])) // value for test B
 	}
 
-	if len(vectorA) == 0 || len(vectorB) == 0 {
-		return 0.0
-	}
-
+	// Compute cosine similarity
 	dotProduct := 0.0
 	magA := 0.0
 	magB := 0.0
-	for i := range vectorA {
-		dotProduct += vectorA[i] * vectorB[i]
-		magA += vectorA[i] * vectorA[i]
-		magB += vectorB[i] * vectorB[i]
+	for i := 0; i < len(vectorA); i++ {
+		dotProduct += vectorA[i] * vectorB[i] // dot product
+		magA += vectorA[i] * vectorA[i]       // magnitude of A
+		magB += vectorB[i] * vectorB[i]       // magnitude of B
 	}
+
+	// Handle cases where the magnitude is 0
+	if magA == 0 || magB == 0 {
+		return 0.0 // If either vector has no steps, similarity is undefined, return 0
+	}
+
 	return dotProduct / (math.Sqrt(magA) * math.Sqrt(magB))
 }
 
