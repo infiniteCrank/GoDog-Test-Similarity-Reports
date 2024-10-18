@@ -280,7 +280,7 @@ func max(a, b int) int {
 }
 
 // Function to merge identical nodes in the test journeys
-func mergeIdenticalNodes(nodes []Test) []Test {
+func mergeIdenticalNodes(nodes []Test) []*Test {
 	nodeMap := make(map[string]*Test) // Map to hold unique nodes
 
 	for _, node := range nodes {
@@ -323,8 +323,8 @@ func getMergedTestJourneys(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare response with the merged test journeys
 	response := struct {
-		Name     string `json:"name"`
-		Children []Test `json:"children"`
+		Name     string  `json:"name"`
+		Children []*Test `json:"children"`
 	}{
 		Name:     "Merged Test Journeys",
 		Children: mergedTests,
