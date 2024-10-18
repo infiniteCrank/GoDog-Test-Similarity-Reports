@@ -1,11 +1,25 @@
 document.getElementById('fetchReports').addEventListener('click', function() {
-    const directory = document.getElementById('directoryInput').value;
-    fetchSimilarityReports(directory);
+    const files = document.getElementById('directoryInput').files;
+    // Get the directory name
+    const directory = files.length > 0 ? files[0].webkitRelativePath.split('/')[0] : null; 
+
+    if (directory) {
+        fetchSimilarityReports(directory);
+    } else {
+        alert("Please choose a directory.");
+    }
 });
 
 document.getElementById('fetchJourney').addEventListener('click', function() {
-    const directory = document.getElementById('directoryInput2').value;
-    fetchTestJourneys(directory);
+    const files = document.getElementById('directoryInput2').files;
+    // Get the directory name
+    const directory = files.length > 0 ? files[0].webkitRelativePath.split('/')[0] : null; 
+
+    if (directory) {
+        fetchTestJourneys(directory);
+    } else {
+        alert("Please choose a directory.");
+    }
 });
 
 function fetchSimilarityReports(directory) {

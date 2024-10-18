@@ -1,6 +1,13 @@
 document.getElementById('optimizeDirectoryButton').addEventListener('click', function() {
-    const directory = document.getElementById('directoryInput').value;
-    optimizeFeatureFiles(directory);
+    const files = document.getElementById('directoryInput').files;
+    // Get the directory name
+    const directory = files.length > 0 ? files[0].webkitRelativePath.split('/')[0] : null; 
+
+    if (directory) {
+        optimizeFeatureFiles(directory);
+    } else {
+        alert("Please choose a directory.");
+    }
 });
 
 function optimizeFeatureFiles(directory) {

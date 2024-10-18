@@ -24,20 +24,21 @@
         </nav>
     </header>
     <main>
-        <div class="controls">
-            <input type="text" id="directoryInput" placeholder="Enter directory (optional)">
-            <button id="fetchReports">Fetch Reports</button>
-        </div>
         <div id="reportContainer">
             <h2>Report Summary</h2>
+            <div class="controls">
+                <input type="file" id="directoryInput" webkitdirectory directory required>
+                <button id="fetchReports">Fetch Reports</button>
+            </div>
             <div id="similarityReport"></div>
         </div>
-        <div class="controls">
-            <input type="text" id="directoryInput2" placeholder="Enter directory (optional)">
-            <button id="fetchJourney">Fetch Reports</button>
-        </div>
-        <div id="reportContainer">
+
+        <div id="reportContainer2">
             <h2>Test Journeys</h2>
+            <div class="controls">
+                <input type="file" id="directoryInput2" webkitdirectory directory required>
+                <button id="fetchJourney">Fetch Reports</button>
+            </div>
             <div id="hierarchicalChart"></div> 
         </div>
     </main>
