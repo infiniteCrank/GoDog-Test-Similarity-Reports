@@ -181,11 +181,40 @@ function dragended(event, d) {
 }
 }
 
+function mergeIdenticalNodes(nodes) {
+    const mergedNodes = []; // To hold unique nodes
+
+    nodes.forEach(node => {
+        // Check if the current node name already exists in the mergedNodes array
+        const existingNode = mergedNodes.find(n => n.name === node.data.name);
+        if (existingNode) {
+            // If exists, merge children if necessary
+            existingNode.children = existingNode.children.concat(node.children);
+        } else {
+            // Otherwise, push the new node to the merged list
+            mergedNodes.push({
+                name: node.data.name,
+                children: node.children ? node.children : [] // Initialize if no children
+            });
+        }
+    });
+
+    return mergedNodes;
+}
+
 function renderHierarchicalChart(data) {
     const hierarchyData = {
         name: "Test Journeys",
         children: data.children // This should reflect the structure from your API response
     };
+
+    // Create the root node for D3 hierarchy
+    const root = d3.hierarchy(hierarchyData);
+
+    // Merge identical nodes at the same level
+    if (root.children) {
+        root.children = mergeIdenticalNodes(root.children);
+    }
 
     const width = window.innerWidth; // Full width of the SVG
     const height = window.innerHeight; // Full height of the SVG
@@ -199,16 +228,16 @@ function renderHierarchicalChart(data) {
         .attr("width", width)
         .attr("height", height);
 
-    const root = d3.hierarchy(hierarchyData);
+    // Create tree layout
     const treeLayout = d3.tree()
-        .size([height, width - 160]); // Specify size for the tree layout
+        .size([height - 100, width - 160]); // Adjusted size for better spacing
 
-    // Set separation between siblings
+    // Set separation to manipulate spacing
     treeLayout.separation = (a, b) => {
-        return (a.parent === b.parent ? 1 : 1.5); // Space between sibling nodes
+        return (a.parent === b.parent ? 0.5 : 1.5); // Use a separation factor to control spacing
     };
 
-    // Compute the tree layout
+    // Compute the tree layout based on the current hierarchy
     treeLayout(root);
 
     // Draw links (connecting lines between nodes)
@@ -217,11 +246,11 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('line')
         .attr('class', 'link')
-        .attr('x1', d => d.source.y)
-        .attr('y1', d => d.source.x)
-        .attr('x2', d => d.target.y)
-        .attr('y2', d => d.target.x)
-        .attr('stroke', '#ccc');
+        .attr('x1', d => d.source.y) // Starting x position from the source node
+        .attr('y1', d => d.source.x) // Starting y position from the source node
+        .attr('x2', d => d.target.y) // Ending x position for the target node
+        .attr('y2', d => d.target.x) // Ending y position for the target node
+        .attr('stroke', '#ccc'); // Set stroke color for the links
 
     // Draw nodes (elements representing the data points)
     const nodes = svg.selectAll('.node')
@@ -238,7 +267,7 @@ function renderHierarchicalChart(data) {
 
     // Add circles as visual nodes
     nodes.append('circle')
-        .attr('r', 5) // Set radius for visible nodes
+        .attr('r', 5) // Radius for visible nodes
         .attr('fill', '#69b3a2');
 
     // Add text labels for each node
@@ -250,25 +279,28 @@ function renderHierarchicalChart(data) {
 
     // Dragging functions
     function dragstarted(event, d) {
-        // On start of drag
         d3.select(this).raise() // Raise the dragged element above others
-            .classed("active", true); // Set class to indicate active dragging
+            .classed("active", true); // Set class to indicate that we are dragging
     }
 
     function dragged(event, d) {
-        // Update node position on drag
-        d.x = event.y; // Update x position based on mouse movement
-        d.y = event.x; // Update y position based on mouse movement
+        // Update the node position on drag
+        d.x = event.y; // Update the y position based on mouse movement
+        d.y = event.x; // Update the x position based on mouse movement
+
+        // Move the node visually
         d3.select(this) // Selected node's group
-            .attr("transform", `translate(${d.y}, ${d.x})`); // Move the node visually
-        // Update links if necessary
+            .attr("transform", `translate(${d.y}, ${d.x})`);
+        
+        // Update the links' positions if necessary
         links.attr("x1", l => l.source.y)
             .attr("y1", l => l.source.x)
             .attr("x2", l => l.target.y)
-            .attr("y2", l => l.target.x); // Reposition links
+            .attr("y2", l => l.target.x);
     }
 
     function dragended(event, d) {
-        d3.select(this).classed("active", false); // Remove active class
+        d3.select(this).classed("active", false); // Remove active class after dragging
     }
 }
+
