@@ -183,14 +183,13 @@ function dragended(event, d) {
 
 
 function renderHierarchicalChart(data) {
-    // Prepare the hierarchical data structure for the D3 tree layout
     const hierarchyData = {
-        name: "Test Journeys", // Root node name
-        children: data.children // Child nodes directly sourced from API response
+        name: "Test Journeys",
+        children: data.children // This should reflect the structure from your API response
     };
 
-    const width = window.innerWidth; // Set full width of the window for the SVG
-    const height = window.innerHeight; // Set full height of the window for the SVG
+    const width = window.innerWidth; // Full width of the SVG
+    const height = window.innerHeight; // Full height of the SVG
 
     // Clear any existing SVG elements in the hierarchical chart container
     d3.select("#hierarchicalChart").selectAll("svg").remove();
@@ -198,46 +197,87 @@ function renderHierarchicalChart(data) {
     // Create SVG element for the hierarchical chart
     const svg = d3.select("#hierarchicalChart")
         .append("svg")
-        .attr("width", width) // Set the width of the SVG
-        .attr("height", height); // Set the height of the SVG
+        .attr("width", width)
+        .attr("height", height);
 
-    // Create a D3 hierarchy based on the hierarchical data
     const root = d3.hierarchy(hierarchyData);
-    // Define the tree layout with desired size parameters
-    const treeLayout = d3.tree().size([height, width - 160]);
-    treeLayout(root); // Run the layout algorithm on the hierarchy data
+    const treeLayout = d3.tree()
+        .size([height, width - 160]);
+
+    // Set separation between siblings
+    treeLayout.separation = (a, b) => {
+        return (a.parent === b.parent ? 1 : 1.5); // Allows for space between sibling nodes
+    };
+
+    // Compute the tree layout
+    treeLayout(root);
 
     // Draw links (connecting lines between nodes)
-    svg.selectAll('.link')
-        .data(root.links()) // Bind data to the links
+    const links = svg.selectAll('.link')
+        .data(root.links())
         .enter()
-        .append('line') // Append a line for each link
-        .attr('class', 'link') // Set CSS class for styling
-        .attr('x1', d => d.source.y) // Set starting x position
-        .attr('y1', d => d.source.x) // Set starting y position
-        .attr('x2', d => d.target.y) // Set ending x position
-        .attr('y2', d => d.target.x) // Set ending y position
-        .attr('stroke', '#ccc'); // Set color for the links
+        .append('line')
+        .attr('class', 'link')
+        .attr('x1', d => d.source.y)
+        .attr('y1', d => d.source.x)
+        .attr('x2', d => d.target.y)
+        .attr('y2', d => d.target.x)
+        .attr('stroke', '#ccc');
 
-    // Draw nodes (circles in the hierarchical layout)
+    // Draw nodes (elements representing the data points)
     const nodes = svg.selectAll('.node')
-        .data(root.descendants()) // Bind data to the descendants (nodes)
+        .data(root.descendants())
         .enter()
-        .append('g') // Append group elements for each node
-        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf')) // Set class based on whether node has children
-        .attr('transform', d => `translate(${d.y},${d.x})`); // Position each group based on calculated coordinates
+        .append('g')
+        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
+        .attr('transform', d => `translate(${d.y},${d.x})`) // Position nodes based on calculated coordinates
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended)
+        ); // Add drag behavior
 
-    // Add circles representing each node
+    // Add circles as visual nodes
     nodes.append('circle')
-        .attr('r', 4.5) // Set radius for the node circles
-        .attr('fill', '#69b3a2'); // Fill color for the node circles
+        .attr('r', 5) // Radius for visible nodes
+        .attr('fill', '#69b3a2');
 
     // Add text labels for each node
     nodes.append('text')
-        .attr('dy', 3) // Set vertical alignment
-        .attr('x', d => d.children ? -8 : 8) // Adjust x position based on whether the node has children
-        .style('text-anchor', d => d.children ? 'end' : 'start') // Adjust text anchor for alignment
-        .text(d => d.data.name); // Set text content to the node's name
+        .attr('dy', 3)
+        .attr('x', d => d.children ? -8 : 8) // Adjust position based on if they have children
+        .style('text-anchor', d => d.children ? 'end' : 'start')
+        .text(d => d.data.name); // Display node name
+
+    // Update links on each tick
+    function updateLinks() {
+        links.attr('x1', d => d.source.y)
+            .attr('y1', d => d.source.x)
+            .attr('x2', d => d.target.y)
+            .attr('y2', d => d.target.x);
+    }
+
+    // Drag events
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; // Fix position
+        d.fy = d.y; // Fix position
+    }
+
+    function dragged(event, d) {
+        // Move node by dragging
+        d.fx = event.x; // Update fixed x position
+        d.fy = event.y; // Update fixed y position
+
+        // Update node and link positions
+        d3.select(this) // Selected node's group
+            .attr("transform", `translate(${event.x}, ${event.y})`);
+        updateLinks(); // Update the links' positions
+    }
+
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0); // Disable simulation effects
+        d.fx = null; // Allow it to be freely moved afterward
+        d.fy = null; // Allow it to be freely moved afterward
+    }
 }
-
-
