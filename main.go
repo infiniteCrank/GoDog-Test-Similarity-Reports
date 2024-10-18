@@ -372,6 +372,10 @@ func main() {
 	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET")
 	router.HandleFunc("/api/optimize-feature", optimizeFeatureFile).Methods("POST")
 
+	// Serve static files from the public directory
+	fs := http.FileServer(http.Dir("public"))
+	router.PathPrefix("/").Handler(fs)
+
 	// Start the server
 	port := "8080"
 	fmt.Printf("Server is running on port %s\n", port)

@@ -1,0 +1,107 @@
+/* Basic Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+    padding: 20px;
+}
+
+header {
+    background: #007bff;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+header h1 {
+    margin-bottom: 10px;
+}
+
+header p {
+    font-size: 1.2em;
+}
+
+main {
+    margin-top: 20px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+    width: 300px; /* Adjust width for better usability */
+}
+
+button {
+    padding: 10px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+#reportContainer {
+    margin-top: 20px;
+}
+
+h2 {
+    margin: 20px 0;
+    color: #007bff;
+    text-align: center;
+}
+
+#testJourneys, #hierarchicalChart {
+    margin-top: 20px;
+}
+
+footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+nav {
+    background-color: #007bff; /* Match header color */
+    padding: 10px;
+    text-align: center;
+}
+
+nav ul {
+    list-style: none; /* Remove default bullet points */
+}
+
+nav ul li {
+    display: inline; /* Display menu items in a line */
+    margin: 0 15px; /* Spacing between menu items */
+}
+
+nav ul li a {
+    color: white; /* Link color */
+    text-decoration: none; /* Remove underline */
+    font-weight: bold; /* Bold for better visibility */
+}
+
+nav ul li a:hover {
+    text-decoration: underline; /* Underline on hover for effect */
+}

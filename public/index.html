@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Similarity Reports Visualization</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="js/app.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Test Similarity Reports Visualization</h1>
+        <p>Visualize similarity reports of test scenarios to identify duplicates and similarities efficiently.</p>
+        
+        <!-- Navigation Menu -->
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualization.html">Visualization</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <div class="controls">
+            <input type="text" id="directoryInput" placeholder="Enter directory (optional)">
+            <button id="fetchReports">Fetch Reports</button>
+        </div>
+        <div id="reportContainer">
+            <h2>Report Summary</h2>
+            <div id="similarityReport"></div>
+        </div>
+        <div class="controls">
+            <input type="text" id="directoryInput2" placeholder="Enter directory (optional)">
+            <button id="fetchJourney">Fetch Reports</button>
+        </div>
+        <div id="reportContainer">
+            <h2>Test Journeys</h2>
+            <div id="hierarchicalChart"></div> 
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Similarity Reports Visualization Tool. All rights reserved.</p>
+    </footer>
+</body>
+</html>

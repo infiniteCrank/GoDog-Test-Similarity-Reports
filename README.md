@@ -162,3 +162,26 @@ curl -X POST http://localhost:8080/api/optimize-feature \
 - ```-H "Content-Type: multipart/form-data":``` Sets the content type to multipart/form-data to indicate that the request will include file uploads.
 - ```-F "featureFile=@path/to/your/file.feature":``` This part uploads your .feature file. Make sure to replace path/to/your/file.feature with the actual path to your feature file on your filesystem.
 - ```-F 'optimizationOptions={"enableNamingChecks":true}':``` This option sets the optimization parameters as JSON. You can change ```true``` to ```false``` if you want to disable the naming checks.
+
+
+## Force-directed graph Explanation  
+
+### Node and Link Creation: 
+
+ - The graph is built using nodes representing test cases and links showing the similarities between them. Nodes and links are created based on the similarity reports (LCS, Cosine, Jaccard).
+ - The strength of each link is derived from the similarity score, influencing its stroke width.
+
+### Simulation: 
+
+ - A D3 force simulation is created that handles the physics of the graph. The nodes are repelled from each other, and links pull connected nodes together, resulting in an organized layout:
+   - Force Link: Keeps nodes connected.
+   - Charge: Adjusts the spacing between nodes.
+   - Center: Centers the graph in the SVG area.
+
+### Tick Function: 
+
+- The ```ticked``` function updates the positions of nodes and links on each tick of the simulation, ensuring they move fluidly as the forces act upon them.
+
+### Dragging Functionality:
+
+ - Allows users to click and drag nodes around in the graph, powered by the D3 drag functionality.
