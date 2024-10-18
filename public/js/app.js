@@ -181,7 +181,6 @@ function dragended(event, d) {
 }
 }
 
-
 function renderHierarchicalChart(data) {
     const hierarchyData = {
         name: "Test Journeys",
@@ -202,11 +201,11 @@ function renderHierarchicalChart(data) {
 
     const root = d3.hierarchy(hierarchyData);
     const treeLayout = d3.tree()
-        .size([height, width - 160]);
+        .size([height, width - 160]); // Specify size for the tree layout
 
     // Set separation between siblings
     treeLayout.separation = (a, b) => {
-        return (a.parent === b.parent ? 1 : 1.5); // Allows for space between sibling nodes
+        return (a.parent === b.parent ? 1 : 1.5); // Space between sibling nodes
     };
 
     // Compute the tree layout
@@ -230,7 +229,7 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('g')
         .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
-        .attr('transform', d => `translate(${d.y},${d.x})`) // Position nodes based on calculated coordinates
+        .attr('transform', d => `translate(${d.y},${d.x})`) // Positioning each node
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
@@ -239,45 +238,37 @@ function renderHierarchicalChart(data) {
 
     // Add circles as visual nodes
     nodes.append('circle')
-        .attr('r', 5) // Radius for visible nodes
+        .attr('r', 5) // Set radius for visible nodes
         .attr('fill', '#69b3a2');
 
     // Add text labels for each node
     nodes.append('text')
         .attr('dy', 3)
-        .attr('x', d => d.children ? -8 : 8) // Adjust position based on if they have children
+        .attr('x', d => d.children ? -8 : 8) // Adjust positions based on parent-child relationship
         .style('text-anchor', d => d.children ? 'end' : 'start')
-        .text(d => d.data.name); // Display node name
+        .text(d => d.data.name); // Display the name of the node
 
-    // Update links on each tick
-    function updateLinks() {
-        links.attr('x1', d => d.source.y)
-            .attr('y1', d => d.source.x)
-            .attr('x2', d => d.target.y)
-            .attr('y2', d => d.target.x);
-    }
-
-    // Drag events
+    // Dragging functions
     function dragstarted(event, d) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x; // Fix position
-        d.fy = d.y; // Fix position
+        // On start of drag
+        d3.select(this).raise() // Raise the dragged element above others
+            .classed("active", true); // Set class to indicate active dragging
     }
 
     function dragged(event, d) {
-        // Move node by dragging
-        d.fx = event.x; // Update fixed x position
-        d.fy = event.y; // Update fixed y position
-
-        // Update node and link positions
+        // Update node position on drag
+        d.x = event.y; // Update x position based on mouse movement
+        d.y = event.x; // Update y position based on mouse movement
         d3.select(this) // Selected node's group
-            .attr("transform", `translate(${event.x}, ${event.y})`);
-        updateLinks(); // Update the links' positions
+            .attr("transform", `translate(${d.y}, ${d.x})`); // Move the node visually
+        // Update links if necessary
+        links.attr("x1", l => l.source.y)
+            .attr("y1", l => l.source.x)
+            .attr("x2", l => l.target.y)
+            .attr("y2", l => l.target.x); // Reposition links
     }
 
     function dragended(event, d) {
-        if (!event.active) simulation.alphaTarget(0); // Disable simulation effects
-        d.fx = null; // Allow it to be freely moved afterward
-        d.fy = null; // Allow it to be freely moved afterward
+        d3.select(this).classed("active", false); // Remove active class
     }
 }
