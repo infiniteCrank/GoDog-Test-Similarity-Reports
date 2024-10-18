@@ -80,6 +80,29 @@ function renderBarChart(data) {
             .attr("height", d => y(0) - y(d.similarity)) // Set the height of the bar, calculating from the y-scale
             .attr("fill", d3.schemeCategory10[idx]); // Use a color scheme for the bars based on the metric index
     });
+
+    // Render the legend
+    renderLegend(metrics);
+}
+
+// Function to render the legend
+function renderLegend(metrics) {
+    const legendContainer = d3.select("#legendContainer");
+    legendContainer.selectAll("*").remove(); // Clear existing legends
+
+    // Create a legend item for each metric
+    metrics.forEach((metric, idx) => {
+        const legendItem = legendContainer.append("div").attr("class", "legend");
+        
+        legendItem.append("div")
+            .attr("class", "square")
+            .style("background-color", d3.schemeCategory10[idx]); // Use the same color as the bars
+
+        legendItem.append("span")
+            .text(metric) // Display metric name next to the color square
+            .style("font-size", "16px") // Optional: Style the font size
+            .style("margin-right", "10px"); // Optional: Add spacing
+    });
 }
 
 // Function to render heatmap

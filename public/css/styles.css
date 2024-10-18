@@ -109,3 +109,23 @@ nav ul li a {
 nav ul li a:hover {
     text-decoration: underline; /* Underline on hover for effect */
 }
+
+#legendContainer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.legend {
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+}
+
+.square {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    border: 1px solid #333; /* Outline for visibility */
+}
