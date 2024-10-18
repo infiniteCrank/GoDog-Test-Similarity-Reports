@@ -23,48 +23,62 @@ function fetchSimilarityReports(chartType) {
         .catch(error => console.error('Error fetching reports:', error));
 }
 
-// Function to render bar chart
 function renderBarChart(data) {
-    const metrics = ['LCS', 'Cosine', 'Jaccard'];
+    // Define the metrics we will visualize
+    const metrics = ['lcs_report', 'cosine_report', 'jaccard_report'];
+
+    // Prepare the reports for each metric
     const reports = [data.lcs_report, data.cosine_report, data.jaccard_report];
 
+    // Set the dimensions of the SVG for the bar chart
     const width = 800;
     const height = 400;
-    const margin = {top: 20, right: 30, bottom: 40, left: 40};
+    const margin = { top: 20, right: 30, bottom: 100, left: 40 }; // Added margin for aesthetics
 
+    // Append an SVG to the report container for visual representation
     const svg = d3.select("#reportContainer").append("svg")
         .attr("width", width)
         .attr("height", height);
 
+    // Create a scale for the x-axis using band scale
     const x = d3.scaleBand()
-        .domain(reports[0].comparisons.map(d => d.test_a))
-        .range([margin.left, width - margin.right])
-        .padding(0.1);
+        .domain(reports[0].comparisons.map(d => d.test_a)) // Use test names as the domain
+        .range([margin.left, width - margin.right]) // Define range based on SVG dimensions
+        .padding(0.1); // Space between bars
 
+    // Create a scale for the y-axis using linear scale
     const y = d3.scaleLinear()
-        .domain([0, d3.max(reports[0].comparisons, d => d.similarity)]).nice()
-        .range([height - margin.bottom, margin.top]);
+        .domain([0, d3.max(reports, report => d3.max(report.comparisons, d => d.similarity))]).nice()
+        .range([height - margin.bottom, margin.top]); // Y values range from top to bottom of the SVG
 
-    // Add axes
+    // Add x-axis to the SVG
     svg.append("g")
-        .attr("transform", `translate(0,${height - margin.bottom})`)
-        .call(d3.axisBottom(x));
+        .attr("transform", `translate(0,${height - margin.bottom})`) // Position it at the bottom
+        .call(d3.axisBottom(x)) // Call the axisBottom function to draw the x-axis and its ticks
+        .selectAll("text")
+        .attr("transform", "rotate(-45)") // Rotate labels to a vertical position for better readability
+        .attr("dx", "-0.8em") // Adjust horizontal position to fit
+        .attr("dy", ".15em") // Adjust vertical position to reduce collision with x-axis
+        .style("text-anchor", "end"); // Anchor the text at the end for correct alignment
 
+    // Add y-axis to the SVG
     svg.append("g")
-        .attr("transform", `translate(${margin.left},0)`)
-        .call(d3.axisLeft(y));
+        .attr("transform", `translate(${margin.left},0)`) // Position it at the left margin
+        .call(d3.axisLeft(y)); // Call the axisLeft function to draw the y-axis and its ticks
 
     // Drawing bars for each metric
-    metrics.forEach((metric, idx) => {
-        svg.selectAll(`.bar-${idx}`)
-            .data(reports[idx].comparisons)
-            .enter().append("rect")
-            .attr("class", `bar-${idx}`)
-            .attr("x", d => x(d.test_a))
-            .attr("y", d => y(d.similarity))
-            .attr("width", x.bandwidth())
-            .attr("height", d => y(0) - y(d.similarity))
-            .attr("fill", d3.schemeCategory10[idx]);
+    const barWidth = x.bandwidth() / metrics.length; // Calculate the width of each bar based on the number of metrics
+
+    metrics.forEach((metric, idx) => { // Loop through each metric
+        svg.selectAll(`.bar-${idx}`) // Select elements with class related to the current metric
+            .data(reports[idx].comparisons) // Bind data for the current metric
+            .enter().append("rect") // Enter selection for appending rectangles (bars)
+            .attr("class", `bar-${idx}`) // Set the class for the bars based on their metric
+            .attr("x", d => x(d.test_a) + idx * barWidth) // Position the bars on the x-axis, offset for multiple metrics
+            .attr("y", d => y(d.similarity)) // Set the height of the bar based on similarity
+            .attr("width", barWidth - 1) // Set the width of the bar and include spacing between bars
+            .attr("height", d => y(0) - y(d.similarity)) // Set the height of the bar, calculating from the y-scale
+            .attr("fill", d3.schemeCategory10[idx]); // Use a color scheme for the bars based on the metric index
     });
 }
 
