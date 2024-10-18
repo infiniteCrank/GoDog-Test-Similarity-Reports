@@ -208,14 +208,6 @@ function renderHierarchicalChart(data) {
         children: data.children // This should reflect the structure from your API response
     };
 
-    // Create the root node for D3 hierarchy
-    const root = d3.hierarchy(hierarchyData);
-
-    // Merge identical nodes at the same level
-    if (root.children) {
-        root.children = mergeIdenticalNodes(root.children);
-    }
-
     const width = window.innerWidth; // Full width of the SVG
     const height = window.innerHeight; // Full height of the SVG
 
@@ -228,14 +220,12 @@ function renderHierarchicalChart(data) {
         .attr("width", width)
         .attr("height", height);
 
-    // Create tree layout
+    const root = d3.hierarchy(hierarchyData);
     const treeLayout = d3.tree()
         .size([height - 100, width - 160]); // Adjusted size for better spacing
 
     // Set separation to manipulate spacing
-    treeLayout.separation = (a, b) => {
-        return (a.parent === b.parent ? 0.5 : 1.5); // Use a separation factor to control spacing
-    };
+    treeLayout.separation = (a, b) => (a.parent === b.parent ? 0.5 : 1.5); // Node spacing
 
     // Compute the tree layout based on the current hierarchy
     treeLayout(root);
@@ -263,7 +253,7 @@ function renderHierarchicalChart(data) {
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended)
-        ); // Add drag behavior
+        ); // Add drag behavior to nodes
 
     // Add circles as visual nodes
     nodes.append('circle')
@@ -273,14 +263,23 @@ function renderHierarchicalChart(data) {
     // Add text labels for each node
     nodes.append('text')
         .attr('dy', 3)
-        .attr('x', d => d.children ? -8 : 8) // Adjust positions based on parent-child relationship
+        .attr('x', d => d.children ? -8 : 8) // Adjust positions based on whether the node has children
         .style('text-anchor', d => d.children ? 'end' : 'start')
         .text(d => d.data.name); // Display the name of the node
+
+    // Update links on each tick
+    function updateLinks() {
+        svg.selectAll('.link')
+            .attr('x1', d => d.source.y) // Update x position for links
+            .attr('y1', d => d.source.x) // Update y position for links
+            .attr('x2', d => d.target.y) // Update target x position
+            .attr('y2', d => d.target.x); // Update target y position
+    }
 
     // Dragging functions
     function dragstarted(event, d) {
         d3.select(this).raise() // Raise the dragged element above others
-            .classed("active", true); // Set class to indicate that we are dragging
+        .classed("active", true); // Set class to indicate that we are dragging
     }
 
     function dragged(event, d) {
@@ -291,16 +290,16 @@ function renderHierarchicalChart(data) {
         // Move the node visually
         d3.select(this) // Selected node's group
             .attr("transform", `translate(${d.y}, ${d.x})`);
-        
+
         // Update the links' positions if necessary
-        links.attr("x1", l => l.source.y)
-            .attr("y1", l => l.source.x)
-            .attr("x2", l => l.target.y)
-            .attr("y2", l => l.target.x);
+        updateLinks(); // Call the update links function to reposition the lines
     }
 
     function dragended(event, d) {
         d3.select(this).classed("active", false); // Remove active class after dragging
+        // Optionally implement logic to save the position if needed:
+        // d.fx = null; // Allow node to be freely moved afterward
+        // d.fy = null; // Allow node to be freely moved afterward
     }
 }
 
