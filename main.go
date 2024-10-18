@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -11,6 +12,134 @@ import (
 
 	"github.com/gorilla/mux"
 )
+
+// Struct for request body to enable feature toggles
+type OptimizationOptions struct {
+	EnableNamingChecks bool `json:"enableNamingChecks"`
+}
+
+// Function to validate scenario names and steps
+func validateNamingConvention(scenarios []*Test) error {
+	for _, scenario := range scenarios {
+		if strings.TrimSpace(scenario.Name) == "" {
+			return fmt.Errorf("scenario has an empty name")
+		}
+		for _, step := range scenario.Steps {
+			if len(step) > 80 { // Check for step length limit
+				return fmt.Errorf("step exceeds maximum length: %s", step)
+			}
+		}
+	}
+	return nil
+}
+
+// Function to optimize a feature content
+func optimizeFeature(content string, opts OptimizationOptions) string {
+	lines := strings.Split(content, "\n")
+	var optimizedLines []string
+	var scenarios []*Test
+	var background []string
+	var currentScenario Test
+
+	// Parse scenarios from content
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Scenario:") {
+			if currentScenario.Name != "" {
+				scenarios = append(scenarios, &currentScenario)
+				currentScenario = Test{}
+			}
+			currentScenario.Name = line
+			currentScenario.Steps = []string{}
+		} else if strings.HasPrefix(line, "Given") || strings.HasPrefix(line, "When") || strings.HasPrefix(line, "Then") {
+			currentScenario.Steps = append(currentScenario.Steps, line)
+		} else if strings.HasPrefix(line, "Background:") {
+			background = append(background, line)
+		} else if strings.HasPrefix(line, "@") || strings.HasPrefix(line, "#") {
+			// Handle tags and comments, possibly storing for later use
+			optimizedLines = append(optimizedLines, line)
+		}
+	}
+
+	// Add the last scenario
+	if currentScenario.Name != "" {
+		scenarios = append(scenarios, &currentScenario)
+	}
+
+	// Validate naming conventions if enabled
+	if opts.EnableNamingChecks {
+		if err := validateNamingConvention(scenarios); err != nil {
+			return fmt.Sprintf("Naming convention error: %s", err.Error())
+		}
+	}
+
+	// Use Background if applicable
+	if len(background) > 0 {
+		optimizedLines = append(optimizedLines, background...)
+	}
+
+	// Consolidate scenarios into example tables
+	consolidatedScenarios := map[string]*Test{}
+	for _, scenario := range scenarios {
+		stepKey := strings.Join(scenario.Steps, "|")
+		if existingScenario, found := consolidatedScenarios[stepKey]; found {
+			// Combine scenarios into example table
+			existingScenario.Name = "Consolidated Scenario with Examples"
+		} else {
+			consolidatedScenarios[stepKey] = scenario
+		}
+	}
+
+	// Create an example table
+	var exampleTable []string
+	for _, scenario := range consolidatedScenarios {
+		// Example row format can be customized based on the scenario
+		exampleRow := "| param | result |\n"
+		exampleRow += "| value1 | result1 |\n"
+		exampleRow += "| value2 | result2 |\n"
+		exampleTable = append(exampleTable, scenario.Name)
+	}
+
+	// Append the example table if we have any consolidated scenarios
+	if len(exampleTable) > 0 {
+		optimizedLines = append(optimizedLines, "Examples:")
+		optimizedLines = append(optimizedLines, strings.Join(exampleTable, "\n"))
+	}
+
+	return strings.Join(optimizedLines, "\n")
+}
+
+// Endpoint to optimize a feature file with options
+func optimizeFeatureFile(w http.ResponseWriter, r *http.Request) {
+	var opts OptimizationOptions
+	// Decode JSON request body to get optimization options
+	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Expect a feature file as multipart/form-data
+	file, _, err := r.FormFile("featureFile")
+	if err != nil {
+		http.Error(w, "Error uploading file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Read the content of the feature file
+	content, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, "Error reading file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Optimize the feature file content
+	optimizedContent := optimizeFeature(string(content), opts)
+
+	// Set header and return optimized feature content
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(optimizedContent))
+}
 
 type Test struct {
 	Name  string   `json:"name"`
@@ -240,7 +369,8 @@ func getTestJourneys(w http.ResponseWriter, r *http.Request) {
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/similarity-reports", getSimilarityReports).Methods("GET")
-	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET") // New endpoint for test journeys
+	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET")
+	router.HandleFunc("/api/optimize-feature", optimizeFeatureFile).Methods("POST")
 
 	// Start the server
 	port := "8080"
