@@ -365,12 +365,72 @@ func getTestJourneys(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(testJourneys)
 }
 
+// Endpoint to optimize all feature files in a directory
+func optimizeFeaturesInDirectory(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("directory")
+	if dir == "" {
+		http.Error(w, "Directory parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		http.Error(w, "Error reading directory: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var allScenarios []Test // Store as a slice of Test structs
+	var backgroundSteps []string
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".feature") {
+			content, err := os.ReadFile(dir + "/" + file.Name())
+			if err != nil {
+				http.Error(w, "Error reading feature file: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			parsedTests, _ := parseFeatureFiles(string(content)) // Assume this returns []Test
+			allScenarios = append(allScenarios, parsedTests...)  // Use the ... to expand the slice
+
+			// Collect background steps if found
+			for _, scenario := range parsedTests {
+				for _, step := range scenario.Steps {
+					if strings.HasPrefix(step, "Given") {
+						backgroundSteps = append(backgroundSteps, step)
+					}
+				}
+			}
+		}
+	}
+
+	// If there are common background steps, use them
+	combinedFeature := "Feature: Consolidated Feature\n"
+
+	if len(backgroundSteps) > 0 {
+		combinedFeature += "Background:\n"
+		combinedFeature += strings.Join(backgroundSteps, "\n") + "\n"
+	}
+
+	// Optimize and consolidate all scenarios into a single output
+	for _, scenario := range allScenarios {
+		combinedFeature += scenario.Name + "\n"
+		combinedFeature += strings.Join(scenario.Steps, "\n") + "\n\n"
+	}
+
+	// Return the optimized feature content as a downloadable response
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Disposition", "attachment; filename=optimized_features.feature")
+	w.Write([]byte(combinedFeature))
+}
+
 // Setup routing with Gorilla Mux
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/similarity-reports", getSimilarityReports).Methods("GET")
 	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET")
 	router.HandleFunc("/api/optimize-feature", optimizeFeatureFile).Methods("POST")
+	router.HandleFunc("/api/optimize-directory", optimizeFeaturesInDirectory).Methods("GET")
 
 	// Serve static files from the public directory
 	fs := http.FileServer(http.Dir("public"))

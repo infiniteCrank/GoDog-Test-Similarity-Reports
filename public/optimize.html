@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimize Feature File</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/optimize.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Optimize Gherkin Feature File</h1>
+        <p>Upload a .feature file to optimize it based on best practices.</p>
+        
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualization.html">Visualization</a></li>
+                <li><a href="optimize.html">Optimize Gherkin Feature File</a></li>
+                <li><a href="optimize-directory.html">Optimize All Gherkin Feature Files</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <div class="controls">
+            <form id="optimizeForm" enctype="multipart/form-data">
+                <input type="file" id="featureFile" name="featureFile" accept=".feature" required>
+                <button type="submit">Optimize Feature File</button>
+            </form>
+        </div>
+        <div id="resultContainer">
+            <h2>Optimized Feature File</h2>
+            <a id="downloadLink" style="display: none;">Download Optimized File</a>
+            <pre id="optimizedContent" style="white-space: pre-wrap;"></pre>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Optimize Feature File Tool. All rights reserved.</p>
+    </footer>
+</body>
+</html>
