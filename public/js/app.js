@@ -221,11 +221,19 @@ function renderHierarchicalChart(data) {
         .attr("height", height);
 
     const root = d3.hierarchy(hierarchyData);
+    
+    // Merge identical nodes at the same level
+    if (root.children) {
+        root.children = mergeIdenticalNodes(root.children); // Call merge function
+    }
+
     const treeLayout = d3.tree()
         .size([height - 100, width - 160]); // Adjusted size for better spacing
 
-    // Set separation to manipulate spacing
-    treeLayout.separation = (a, b) => (a.parent === b.parent ? 0.5 : 1.5); // Node spacing
+    // Set separation to manipulate spacing between nodes
+    treeLayout.separation = (a, b) => {
+        return (a.parent === b.parent ? 0.5 : 1.5); // Use a separation factor to control spacing
+    };
 
     // Compute the tree layout based on the current hierarchy
     treeLayout(root);
@@ -236,10 +244,10 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('line')
         .attr('class', 'link')
-        .attr('x1', d => d.source.y) // Starting x position from the source node
-        .attr('y1', d => d.source.x) // Starting y position from the source node
-        .attr('x2', d => d.target.y) // Ending x position for the target node
-        .attr('y2', d => d.target.x) // Ending y position for the target node
+        .attr('x1', d => d.source.y)
+        .attr('y1', d => d.source.x)
+        .attr('x2', d => d.target.y)
+        .attr('y2', d => d.target.x)
         .attr('stroke', '#ccc'); // Set stroke color for the links
 
     // Draw nodes (elements representing the data points)
@@ -248,17 +256,17 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('g')
         .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
-        .attr('transform', d => `translate(${d.y},${d.x})`) // Positioning each node
+        .attr('transform', d => `translate(${d.y},${d.x})`) // Position each node
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended)
         ); // Add drag behavior to nodes
 
-    // Add circles as visual nodes
+    // Add circles as visual nodes with color distinction
     nodes.append('circle')
         .attr('r', 5) // Radius for visible nodes
-        .attr('fill', '#69b3a2');
+        .attr('fill', d => d.children ? '#69b3a2' : '#ff69b4'); // Use pink for merged nodes, blue for individual nodes
 
     // Add text labels for each node
     nodes.append('text')
