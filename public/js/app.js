@@ -183,51 +183,61 @@ function dragended(event, d) {
 
 
 function renderHierarchicalChart(data) {
+    // Prepare the hierarchical data structure for the D3 tree layout
     const hierarchyData = {
-        name: "Test Journeys",
-        children: data.children // This should reflect the structure from your API response
+        name: "Test Journeys", // Root node name
+        children: data.children // Child nodes directly sourced from API response
     };
 
-    const width = 600;
-    const height = 400;
+    const width = window.innerWidth; // Set full width of the window for the SVG
+    const height = window.innerHeight; // Set full height of the window for the SVG
 
+    // Clear any existing SVG elements in the hierarchical chart container
+    d3.select("#hierarchicalChart").selectAll("svg").remove();
+
+    // Create SVG element for the hierarchical chart
     const svg = d3.select("#hierarchicalChart")
         .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+        .attr("width", width) // Set the width of the SVG
+        .attr("height", height); // Set the height of the SVG
 
+    // Create a D3 hierarchy based on the hierarchical data
     const root = d3.hierarchy(hierarchyData);
+    // Define the tree layout with desired size parameters
     const treeLayout = d3.tree().size([height, width - 160]);
-    treeLayout(root);
+    treeLayout(root); // Run the layout algorithm on the hierarchy data
 
-    // Links
+    // Draw links (connecting lines between nodes)
     svg.selectAll('.link')
-        .data(root.links())
+        .data(root.links()) // Bind data to the links
         .enter()
-        .append('line')
-        .attr('class', 'link')
-        .attr('x1', d => d.source.y)
-        .attr('y1', d => d.source.x)
-        .attr('x2', d => d.target.y)
-        .attr('y2', d => d.target.x)
-        .attr('stroke', '#ccc');
+        .append('line') // Append a line for each link
+        .attr('class', 'link') // Set CSS class for styling
+        .attr('x1', d => d.source.y) // Set starting x position
+        .attr('y1', d => d.source.x) // Set starting y position
+        .attr('x2', d => d.target.y) // Set ending x position
+        .attr('y2', d => d.target.x) // Set ending y position
+        .attr('stroke', '#ccc'); // Set color for the links
 
-    // Nodes
+    // Draw nodes (circles in the hierarchical layout)
     const nodes = svg.selectAll('.node')
-        .data(root.descendants())
+        .data(root.descendants()) // Bind data to the descendants (nodes)
         .enter()
-        .append('g')
-        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
-        .attr('transform', d => `translate(${d.y},${d.x})`);
+        .append('g') // Append group elements for each node
+        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf')) // Set class based on whether node has children
+        .attr('transform', d => `translate(${d.y},${d.x})`); // Position each group based on calculated coordinates
 
+    // Add circles representing each node
     nodes.append('circle')
-        .attr('r', 4.5)
-        .attr('fill', '#69b3a2');
+        .attr('r', 4.5) // Set radius for the node circles
+        .attr('fill', '#69b3a2'); // Fill color for the node circles
 
+    // Add text labels for each node
     nodes.append('text')
-        .attr('dy', 3)
-        .attr('x', d => d.children ? -8 : 8)
-        .style('text-anchor', d => d.children ? 'end' : 'start')
-        .text(d => d.data.name);
+        .attr('dy', 3) // Set vertical alignment
+        .attr('x', d => d.children ? -8 : 8) // Adjust x position based on whether the node has children
+        .style('text-anchor', d => d.children ? 'end' : 'start') // Adjust text anchor for alignment
+        .text(d => d.data.name); // Set text content to the node's name
 }
+
 
