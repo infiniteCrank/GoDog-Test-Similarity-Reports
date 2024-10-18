@@ -279,6 +279,62 @@ func max(a, b int) int {
 	return b
 }
 
+// Function to merge identical nodes in the test journeys
+func mergeIdenticalNodes(nodes []Test) []Test {
+	nodeMap := make(map[string]*Test) // Map to hold unique nodes
+
+	for _, node := range nodes {
+		if existingNode, found := nodeMap[node.Name]; found {
+			// If the node name already exists, merge the steps
+			existingNode.Steps = append(existingNode.Steps, node.Steps...)
+		} else {
+			// Otherwise, save the new node
+			nodeMap[node.Name] = &Test{
+				Name:  node.Name,
+				Steps: node.Steps,
+			}
+		}
+	}
+
+	// Convert map values to slice
+	mergedNodes := []*Test{}
+	for _, node := range nodeMap {
+		mergedNodes = append(mergedNodes, node)
+	}
+
+	return mergedNodes
+}
+
+// New endpoint to get test journeys with merged identical nodes
+func getMergedTestJourneys(w http.ResponseWriter, r *http.Request) {
+	dir := r.URL.Query().Get("directory")
+	if dir == "" {
+		dir = "./tdata" // Default path
+	}
+
+	tests, err := parseFeatureFiles(dir)
+	if err != nil {
+		http.Error(w, "Error parsing tests: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Merge identical nodes across scenarios
+	mergedTests := mergeIdenticalNodes(tests)
+
+	// Prepare response with the merged test journeys
+	response := struct {
+		Name     string `json:"name"`
+		Children []Test `json:"children"`
+	}{
+		Name:     "Merged Test Journeys",
+		Children: mergedTests,
+	}
+
+	// Set header and return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // Generate test journey hierarchy
 func generateTestJourneys(tests []Test) JourneyNode {
 	root := JourneyNode{Name: "Test Journeys", Children: []JourneyNode{}}
@@ -439,6 +495,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/similarity-reports", getSimilarityReports).Methods("GET")
 	router.HandleFunc("/api/test-journeys", getTestJourneys).Methods("GET")
+	router.HandleFunc("/api/merged-test-journeys", getMergedTestJourneys).Methods("GET")
 	router.HandleFunc("/api/optimize-feature", optimizeFeatureFile).Methods("POST")
 	router.HandleFunc("/api/optimize-directory", optimizeFeaturesInDirectory).Methods("GET")
 

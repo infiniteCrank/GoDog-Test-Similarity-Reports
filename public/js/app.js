@@ -3,23 +3,13 @@ document.getElementById('fetchReports').addEventListener('click', function() {
     // Get the directory name
     const directory = files.length > 0 ? files[0].webkitRelativePath.split('/')[0] : null; 
 
-    if (directory) {
-        fetchSimilarityReports(directory);
-    } else {
-        alert("Please choose a directory.");
-    }
+    fetchSimilarityReports(directory);
+
 });
 
-document.getElementById('fetchJourney').addEventListener('click', function() {
-    const files = document.getElementById('directoryInput2').files;
-    // Get the directory name
-    const directory = files.length > 0 ? files[0].webkitRelativePath.split('/')[0] : null; 
-
-    if (directory) {
-        fetchTestJourneys(directory);
-    } else {
-        alert("Please choose a directory.");
-    }
+document.getElementById('fetchMergedJourneys').addEventListener('click', function() {
+    const directory = document.getElementById('mergedDirectoryInput').value;
+    fetchMergedTestJourneys(directory);
 });
 
 function fetchSimilarityReports(directory) {
@@ -37,35 +27,21 @@ function fetchSimilarityReports(directory) {
         .catch(error => console.error('Error fetching reports:', error));
 }
 
-function fetchTestJourneys(directory) {
-    let url = '/api/test-journeys';
-    if (directory) {
-        url += `?directory=${encodeURIComponent(directory)}`;
-    }
+function fetchMergedTestJourneys(directory) {
+    const url = `/api/merged-test-journeys?directory=${encodeURIComponent(directory)}`;
 
     fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            renderHierarchicalChart(data); // Render the hierarchical chart with the journey data
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch merged test journeys');
+            }
+            return response.json(); // Parse the JSON response
         })
-        .catch(error => console.error('Error fetching test journeys:', error));
+        .then(data => {
+            renderMergedJourneys(data); // Call a function to render the data
+        })
+        .catch(error => console.error('Error fetching merged journeys:', error));
 }
-
-// function renderSimilarityReports(data) {
-//     const reportDiv = document.getElementById('similarityReport');
-//     reportDiv.innerHTML = '';
-
-//     const reportHTML = `
-//         <h2>Similarity Reports</h2>
-//         <h3>LCS Report</h3>
-//         <pre>${JSON.stringify(data.lcs_report, null, 2)}</pre>
-//         <h3>Cosine Report</h3>
-//         <pre>${JSON.stringify(data.cosine_report, null, 2)}</pre>
-//         <h3>Jaccard Report</h3>
-//         <pre>${JSON.stringify(data.jaccard_report, null, 2)}</pre>
-//     `;
-//     reportDiv.innerHTML = reportHTML;
-// }
 
 function renderForceDirectedGraph(data) {
     const width = 800;
@@ -181,116 +157,81 @@ function dragended(event, d) {
 }
 }
 
-function mergeIdenticalNodes(nodes) {
-    const mergedNodes = []; // To hold unique nodes
-    const nodeMap = new Map();
-
-    nodes.forEach(node => {
-        const key = node.data.name; // Use name as key to identify duplicates
-        if (nodeMap.has(key)) {
-            // If exists, merge children
-            const existingNode = nodeMap.get(key);
-            existingNode.children = existingNode.children.concat(node.children || []);
-        } else {
-            // Create a new entry
-            nodeMap.set(key, {
-                data: { name: key },
-                children: node.children || [] // Ensure children are captured
-            });
-        }
-    });
-
-    // Convert map back to an array
-    return Array.from(nodeMap.values());
-}
-
-function renderHierarchicalChart(data) {
+function renderMergedJourneys(data) {
+    // Create a hierarchical structure from the incoming data
     const hierarchyData = {
-        name: "Test Journeys",
-        children: data.children // This should contain the structure from your API
+        name: data.name, // Set the root node name
+        children: data.children // Children nodes directly sourced from API response
     };
 
-    const width = window.innerWidth; // SVG width
-    const height = window.innerHeight; // SVG height
+    // Set up SVG dimensions to be responsive
+    const width = window.innerWidth; // Full width of the SVG based on the window's width
+    const height = window.innerHeight; // Full height of the SVG based on the window's height
 
-    // Clear previous SVG elements
-    d3.select("#hierarchicalChart").selectAll("svg").remove();
+    // Clear any existing SVG elements in the merged journeys container
+    d3.select("#mergedJourneysContainer").selectAll("svg").remove();
 
-    // Create SVG element for the hierarchical chart
-    const svg = d3.select("#hierarchicalChart")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+    // Create the SVG element for displaying the merged test journeys
+    const svg = d3.select("#mergedJourneysContainer")
+        .append("svg") // Append an SVG to the container
+        .attr("width", width) // Set SVG width
+        .attr("height", height); // Set SVG height
 
+    // Create a D3 hierarchy of the data
     const root = d3.hierarchy(hierarchyData);
-
-    // Merge identical nodes if necessary
-    if (root.children) {
-        root.children = mergeIdenticalNodes(root.children); // Merge nodes for identical names
-    }
-
-    // Set up tree layout
+    // Define the tree layout specifying the size
     const treeLayout = d3.tree()
-        .size([height - 100, width - 160]); // Adjust size for nodes
+        .size([height - 100, width - 160]); // Adjusted size for better spacing
 
-    // Set separation for nodes
+    // Set the separation factor for siblings in the layout
     treeLayout.separation = (a, b) => {
-        return a.parent === b.parent ? 1 : 2; // Space between sibling nodes
+        return (a.parent === b.parent ? 1 : 1.5); // Define spacing between sibling nodes
     };
 
-    // Compute the layout for the tree
+    // Compute the layout based on the D3 hierarchy
     treeLayout(root);
 
     // Draw links (connecting lines between nodes)
     const links = svg.selectAll('.link')
-        .data(root.links())
+        .data(root.links()) // Bind data to the links
         .enter()
-        .append('line')
-        .attr('class', 'link')
-        .attr('x1', d => d.source.y) // X1 starts from the source node's Y position
-        .attr('y1', d => d.source.x) // Y1 starts from the source node's X position
-        .attr('x2', d => d.target.y) // X2 targets the target node's Y position
-        .attr('y2', d => d.target.x) // Y2 targets the target node's X position
-        .attr('stroke', '#ccc'); // Color for links
+        .append('line') // Append lines for each link
+        .attr('class', 'link') // Set class attribute for CSS styling
+        .attr('x1', d => d.source.y) // Starting x position from the source node
+        .attr('y1', d => d.source.x) // Starting y position from the source node
+        .attr('x2', d => d.target.y) // Ending x position for the target node
+        .attr('y2', d => d.target.x) // Ending y position for the target node
+        .attr('stroke', '#ccc'); // Set stroke color for links
 
     // Draw nodes (elements representing the data points)
     const nodes = svg.selectAll('.node')
-        .data(root.descendants())
+        .data(root.descendants()) // Bind data to the descendant nodes
         .enter()
-        .append('g')
-        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
-        .attr('transform', d => `translate(${d.y},${d.x})`) // Positioning nodes based on layout
+        .append('g') // Append group elements for each node
+        .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf')) // Assign class based on whether it has children
+        .attr('transform', d => `translate(${d.y},${d.x})`) // Position nodes based on layout
         .call(d3.drag() // Enable dragging for nodes
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended)
         );
 
-    // Add circles as visual nodes with color distinction
+    // Add circles as visual nodes
     nodes.append('circle')
-        .attr('r', 5) // Radius for visible nodes
-        .attr('fill', d => d.children ? '#69b3a2' : '#ff69b4'); // Use pink for merged nodes, blue for individual nodes
+        .attr('r', 5) // Set the radius of the circles
+        .attr('fill', '#69b3a2'); // Fill color for nodes
 
     // Add text labels for each node
     nodes.append('text')
-        .attr('dy', 3)
-        .attr('x', d => d.children ? -8 : 8) // Adjust positions based on whether the node has children
-        .style('text-anchor', d => d.children ? 'end' : 'start')
+        .attr('dy', 3) // Vertical alignment
+        .attr('x', d => d.children ? -8 : 8) // Adjust horizontal position based on children
+        .style('text-anchor', d => d.children ? 'end' : 'start') // Set text alignment
         .text(d => d.data.name); // Display the name of the node
 
-    // Update links on each tick
-    function updateLinks() {
-        svg.selectAll('.link')
-            .attr('x1', d => d.source.y) // Update x position for links
-            .attr('y1', d => d.source.x) // Update y position for links
-            .attr('x2', d => d.target.y) // Update target x position
-            .attr('y2', d => d.target.x); // Update target y position
-    }
-
-    // Dragging functions
+    // Dragging functions for interactivity
     function dragstarted(event, d) {
         d3.select(this).raise() // Raise the dragged element above others
-        .classed("active", true); // Set class to indicate that we are dragging
+            .classed("active", true); // Set class to indicate that we are dragging
     }
 
     function dragged(event, d) {
@@ -298,19 +239,23 @@ function renderHierarchicalChart(data) {
         d.x = event.y; // Update the y position based on mouse movement
         d.y = event.x; // Update the x position based on mouse movement
 
-        // Move the node visually
+        // Move the node visually in the chart
         d3.select(this) // Selected node's group
             .attr("transform", `translate(${d.y}, ${d.x})`);
 
-        // Update the links' positions if necessary
-        updateLinks(); // Call the update links function to reposition the lines
+        // Update the links' positions to reflect the moved node
+        svg.selectAll('.link')
+        .attr("x1", l => l.source.y) // Update x1 position for links
+        .attr("y1", l => l.source.x) // Update y1 position for links
+        .attr("x2", l => l.target.y) // Update x2 position for links
+        .attr("y2", l => l.target.x); // Update y2 position for links
     }
 
     function dragended(event, d) {
-        d3.select(this).classed("active", false); // Remove active class after dragging
-        // Optionally implement logic to save the position if needed:
-        // d.fx = null; // Allow node to be freely moved afterward
-        // d.fy = null; // Allow node to be freely moved afterward
+        d3.select(this).classed("active", false); // Remove active class when drag ends
+        // You can implement logic here to finalize node positions or allow them to be free
+        // For example:
+        // d.fx = null; // Allow the node to be freely moved afterward
+        // d.fy = null; // Allow the node to be freely moved afterward
     }
 }
-
