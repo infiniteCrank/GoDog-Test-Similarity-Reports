@@ -183,35 +183,37 @@ function dragended(event, d) {
 
 function mergeIdenticalNodes(nodes) {
     const mergedNodes = []; // To hold unique nodes
+    const nodeMap = new Map();
 
     nodes.forEach(node => {
-        // Check if the current node name already exists in the mergedNodes array
-        const existingNode = mergedNodes.find(n => n.name === node.data.name);
-        if (existingNode) {
-            // If exists, merge children if necessary
-            existingNode.children = existingNode.children.concat(node.children);
+        const key = node.data.name; // Use name as key to identify duplicates
+        if (nodeMap.has(key)) {
+            // If exists, merge children
+            const existingNode = nodeMap.get(key);
+            existingNode.children = existingNode.children.concat(node.children || []);
         } else {
-            // Otherwise, push the new node to the merged list
-            mergedNodes.push({
-                name: node.data.name,
-                children: node.children ? node.children : [] // Initialize if no children
+            // Create a new entry
+            nodeMap.set(key, {
+                data: { name: key },
+                children: node.children || [] // Ensure children are captured
             });
         }
     });
 
-    return mergedNodes;
+    // Convert map back to an array
+    return Array.from(nodeMap.values());
 }
 
 function renderHierarchicalChart(data) {
     const hierarchyData = {
         name: "Test Journeys",
-        children: data.children // This should reflect the structure from your API response
+        children: data.children // This should contain the structure from your API
     };
 
-    const width = window.innerWidth; // Full width of the SVG
-    const height = window.innerHeight; // Full height of the SVG
+    const width = window.innerWidth; // SVG width
+    const height = window.innerHeight; // SVG height
 
-    // Clear any existing SVG elements in the hierarchical chart container
+    // Clear previous SVG elements
     d3.select("#hierarchicalChart").selectAll("svg").remove();
 
     // Create SVG element for the hierarchical chart
@@ -221,21 +223,22 @@ function renderHierarchicalChart(data) {
         .attr("height", height);
 
     const root = d3.hierarchy(hierarchyData);
-    
-    // Merge identical nodes at the same level
+
+    // Merge identical nodes if necessary
     if (root.children) {
-        root.children = mergeIdenticalNodes(root.children); // Call merge function
+        root.children = mergeIdenticalNodes(root.children); // Merge nodes for identical names
     }
 
+    // Set up tree layout
     const treeLayout = d3.tree()
-        .size([height - 100, width - 160]); // Adjusted size for better spacing
+        .size([height - 100, width - 160]); // Adjust size for nodes
 
-    // Set separation to manipulate spacing between nodes
+    // Set separation for nodes
     treeLayout.separation = (a, b) => {
-        return (a.parent === b.parent ? 0.5 : 1.5); // Use a separation factor to control spacing
+        return a.parent === b.parent ? 1 : 2; // Space between sibling nodes
     };
 
-    // Compute the tree layout based on the current hierarchy
+    // Compute the layout for the tree
     treeLayout(root);
 
     // Draw links (connecting lines between nodes)
@@ -244,11 +247,11 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('line')
         .attr('class', 'link')
-        .attr('x1', d => d.source.y)
-        .attr('y1', d => d.source.x)
-        .attr('x2', d => d.target.y)
-        .attr('y2', d => d.target.x)
-        .attr('stroke', '#ccc'); // Set stroke color for the links
+        .attr('x1', d => d.source.y) // X1 starts from the source node's Y position
+        .attr('y1', d => d.source.x) // Y1 starts from the source node's X position
+        .attr('x2', d => d.target.y) // X2 targets the target node's Y position
+        .attr('y2', d => d.target.x) // Y2 targets the target node's X position
+        .attr('stroke', '#ccc'); // Color for links
 
     // Draw nodes (elements representing the data points)
     const nodes = svg.selectAll('.node')
@@ -256,12 +259,12 @@ function renderHierarchicalChart(data) {
         .enter()
         .append('g')
         .attr('class', d => 'node' + (d.children ? ' node--internal' : ' node--leaf'))
-        .attr('transform', d => `translate(${d.y},${d.x})`) // Position each node
-        .call(d3.drag()
+        .attr('transform', d => `translate(${d.y},${d.x})`) // Positioning nodes based on layout
+        .call(d3.drag() // Enable dragging for nodes
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended)
-        ); // Add drag behavior to nodes
+        );
 
     // Add circles as visual nodes with color distinction
     nodes.append('circle')
