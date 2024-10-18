@@ -109,16 +109,10 @@ func optimizeFeature(content string, opts OptimizationOptions) string {
 	return strings.Join(optimizedLines, "\n")
 }
 
-// Endpoint to optimize a feature file with options
+// Endpoint to optimize a feature file
 func optimizeFeatureFile(w http.ResponseWriter, r *http.Request) {
-	var opts OptimizationOptions
-	// Decode JSON request body to get optimization options
-	if err := json.NewDecoder(r.Body).Decode(&opts); err != nil {
-		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Expect a feature file as multipart/form-data
+	// Read optimization options from form data
+	enableNamingChecks := r.FormValue("enableNamingChecks") == "true" // Get the toggle value
 	file, _, err := r.FormFile("featureFile")
 	if err != nil {
 		http.Error(w, "Error uploading file: "+err.Error(), http.StatusBadRequest)
@@ -133,11 +127,15 @@ func optimizeFeatureFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create options struct for optimization
+	opts := OptimizationOptions{EnableNamingChecks: enableNamingChecks}
+
 	// Optimize the feature file content
 	optimizedContent := optimizeFeature(string(content), opts)
 
 	// Set header and return optimized feature content
 	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Disposition", "attachment; filename=optimized_features.feature")
 	w.Write([]byte(optimizedContent))
 }
 
