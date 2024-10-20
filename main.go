@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"go-similarity-reports/statistics"
+	"go-similarity-reports/analysis"
+	"go-similarity-reports/optimize"
 	"go-similarity-reports/statistics/visualizations"
 	"net/http"
 	"os"
@@ -13,9 +14,11 @@ import (
 // Setup routing with Gorilla Mux
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/api/similarity-reports", statistics.GetSimilarityReports).Methods("GET")
+	router.HandleFunc("/api/similarity-reports", analysis.GetSimilarityReports).Methods("GET")
 	router.HandleFunc("/api/test-journeys", visualizations.GetTestJourneys).Methods("GET")
 	router.HandleFunc("/api/merged-test-journeys", visualizations.GetMergedTestJourneys).Methods("GET")
+
+	router.HandleFunc("/optimize", optimize.OptimizeFeatureHandler).Methods("POST")
 
 	// Serve static files from the public directory
 	fs := http.FileServer(http.Dir("public"))

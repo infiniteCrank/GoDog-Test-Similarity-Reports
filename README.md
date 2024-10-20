@@ -108,60 +108,23 @@ http://localhost:8080/api/test-journeys?directory=./your-directory
 
 Produces a hierarchy Data Structure: A new JourneyNode struct was created to represent each test and its steps in a hierarchical structure for use with D3.js.
 
-## Feature file optimization endpoint 
+# Gherkin Feature File Optimizer
 
-Using the following resources: \
-https://cucumber.io/docs/bdd/better-gherkin/
-https://automationpanda.com/2017/01/30/bdd-101-writing-good-gherkin/
-https://www.indium.tech/blog/best-practices-in-preparing-gherkin-feature-file/
+## Overview
 
-This endpoint takes in a feature file and gives back an optimized one.
+This application optimizes Gherkin feature files by merging scenarios with common steps, creating a `Background` section, and checking scenario naming conventions. It also preserves tags found in the original feature file.
 
-### List of Optimizations
-#### Consolidation of Scenarios:
+## Features
 
- - If multiple scenarios share identical steps, they are combined into a single scenario with an Examples table, reducing redundancy.
-Use of Background:
+- **Background Generation**: Generates a `Background` section for common steps shared by scenarios.
+- **Tag Preservation**: Maintains tags in the optimized output.
+- **Naming Convention Check**: Validates that scenario names conform to recommended practices.
+- **Togglable Functionality**: Users can toggle the naming convention checks.
 
- - Common steps that are shared among multiple scenarios are moved to a Background section at the beginning of the feature file, which enhances readability and minimizes repetition.
-Tags Handling:
+## Requirements
 
- - Tags specified with scenarios (preceded by @) are preserved and appropriately included in the optimized output, allowing for better organization and filtering.
-Comments Handling:
-
- - Lines starting with # (comments) are captured and preserved in the optimized output, ensuring that any necessary context or notes are retained.
-Naming Convention Checks:
-
-### Validates scenario names and step descriptions based on simple rules:
- - Ensures that scenario names are not empty and adhere to a length limit.
- - Checks that each step does not exceed a maximum character length (e.g., 80 characters).
- - This is optional and can be enabled or disabled via the request body.
-Clarity Enhancements:
-
- - Encourages clarity in naming of scenarios and steps to ensure they are easily understandable by stakeholders.
-Aims to follow best practices recommended in Gherkin documentation, leading to enhanced collaboration between technical and non-technical team members.
-Example Tables Creation:
-
- - If scenarios can take parameters, such as different values leading to different outcomes, it creates an organized Examples table that lists those parameters clearly, allowing for concise representation of multiple test cases.
- 
-## Summary
-With these optimizations, the endpoint not only streamlines Gherkin syntax but also ensures that the resulting feature files follow industry best practices. These improvements can lead to better collaboration among team members and make maintenance easier as the test suite evolves.
-
-## Example Usage of Feature Optimization End Point
-
-### Example curl Command
-```
-curl -X POST http://localhost:8080/api/optimize-feature \
--H "Content-Type: multipart/form-data" \
--F "featureFile=@path/to/your/file.feature" \
--F 'optimizationOptions={"enableNamingChecks":true}'
-```
-#### Breakdown of the Command
-- ```-X POST:``` Specifies that this is a POST request. \
-- ```http://localhost:8080/api/optimize-feature:``` The URL for the endpoint.
-- ```-H "Content-Type: multipart/form-data":``` Sets the content type to multipart/form-data to indicate that the request will include file uploads.
-- ```-F "featureFile=@path/to/your/file.feature":``` This part uploads your .feature file. Make sure to replace path/to/your/file.feature with the actual path to your feature file on your filesystem.
-- ```-F 'optimizationOptions={"enableNamingChecks":true}':``` This option sets the optimization parameters as JSON. You can change ```true``` to ```false``` if you want to disable the naming checks.
+- Go (version 1.14 or higher)
+- Suitable gherkin parser (included in the project)
 
 
 ## Force-directed graph Explanation  
