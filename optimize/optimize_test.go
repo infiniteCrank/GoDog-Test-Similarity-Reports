@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -14,7 +14,7 @@ import (
 
 // Helper function to read test feature files
 func readTestFile(filename string) string {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		fmt.Println("Error reading test file:", err)
 		return ""
@@ -61,10 +61,10 @@ func TestOptimizeFeatureHandler(t *testing.T) {
 	r.HandleFunc("/optimize", OptimizeFeatureHandler).Methods("POST")
 
 	featureContent := `Feature: User login
-		Scenario: Successful login
-			Given I have a valid username "user1"
-			When I perform the login action
-			Then I should see a welcome message`
+    Scenario: Successful login
+        Given I have a valid username "user1"
+        When I perform the login action
+        Then I should see a welcome message`
 
 	body := &bytes.Buffer{}
 	body.WriteString("feature_file=" + featureContent)
@@ -99,20 +99,20 @@ func TestOptimizeFeatureHandlerWithNamingConventionCheck(t *testing.T) {
 
 	// Prepare a sample feature content with naming issues
 	featureContent := `Feature: User login
-		Scenario: Successful login
-			Given I have a valid username "user1"
-			When I perform the login action
-			Then I should see a welcome message
-	
-		Scenario: Invalid
-			Given I have a valid username "user2"
-			When I perform the login action
-			Then I should see a welcome message
-	
-		Scenario:
-			Given I have a valid username "user3"
-			When I perform the login action
-			Then I should see a welcome message`
+    Scenario: Successful login
+        Given I have a valid username "user1"
+        When I perform the login action
+        Then I should see a welcome message
+
+    Scenario: Invalid
+        Given I have a valid username "user2"
+        When I perform the login action
+        Then I should see a welcome message
+
+    Scenario:
+        Given I have a valid username "user3"
+        When I perform the login action
+        Then I should see a welcome message`
 
 	// Create a new request with the feature content
 	body := &bytes.Buffer{}
@@ -139,7 +139,6 @@ func TestOptimizeFeatureHandlerWithNamingConventionCheck(t *testing.T) {
 	if len(res.NamingIssues) == 0 {
 		t.Error("Expected naming issues in the response, but found none.")
 	}
-
 	// Verify specific issues regarding the invalid scenario names
 	if !contains(res.NamingIssues, "Scenario 'Invalid' does not follow naming conventions") {
 		t.Error("Expected naming issue for 'Invalid' scenario not found.")
