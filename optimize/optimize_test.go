@@ -31,9 +31,9 @@ func TestValidateFeatureName(t *testing.T) {
 // Test for scenario naming validation
 func TestValidateScenarioNames(t *testing.T) {
 	scenarios := []Scenario{
-		{Name: "Valid Scenario", Steps: []string{"Given I have a valid username"}},
+		{Name: "Valid scenario name", Steps: []string{"Given I have a valid username"}},
 		{Name: "Invalid", Steps: []string{"Given I have a valid username"}},
-		{Name: "", Steps: []string{"Given I have a valid username"}},
+		{Name: "", Steps: []string{"Given I have a valid username"}}, // Invalid due to being empty
 	}
 
 	issues := validateScenarioNames(scenarios)
@@ -97,7 +97,7 @@ func TestOptimizeFeatureHandlerWithNamingConventionCheck(t *testing.T) {
         When I perform the login action
         Then I should see a welcome message
 
-    Scenario: 
+    Scenario:
         Given I have a valid username "user3"
         When I perform the login action
         Then I should see a welcome message`
