@@ -105,35 +105,62 @@ func analyzeGherkinDocument(reader *strings.Reader, uuid *messages.UUID) ([]Scen
 	return results, nil // Return the aggregated results and nil error.
 }
 
-// HandleGherkin processes incoming HTTP requests to analyze Gherkin files.
 func HandleGherkin(w http.ResponseWriter, r *http.Request) {
-	log.Println("Received request to analyze Gherkin file.") // Log the receipt of a request.
+	log.Println("Received request to analyze Gherkin files.")
 
-	// Read the Gherkin file content from the request body.
-	body, err := io.ReadAll(r.Body) // Read all data from the request body into a byte slice.
-	if err != nil {                 // Check for errors during reading.
-		http.Error(w, "Failed reading body", http.StatusBadRequest) // Respond with a 400 Bad Request error.
-		log.Println("Error reading request body:", err)             // Log the error for troubleshooting.
-		return                                                      // Exit the function to prevent further processing.
-	}
-	defer r.Body.Close() // Ensure the request body is closed after reading to free up resources.
-
-	reader := strings.NewReader(string(body)) // Create a new strings.Reader to facilitate reading the body as a string.
-	uuid := &messages.UUID{}                  // Initialize a new UUID for unique identification.
-
-	// Analyze the Gherkin document for scenarios and their probabilities.
-	results, err := analyzeGherkinDocument(reader, uuid)
-	if err != nil { // Check for any parsing errors.
-		http.Error(w, "Failed to parse Gherkin document", http.StatusInternalServerError) // Respond with a 500 Internal Server Error.
-		log.Println("Error parsing Gherkin document:", err)                               // Log the error for debugging purposes.
-		return                                                                            // Exit the function to prevent further processing.
+	// Parse the multipart form, with a max memory of 10 MB
+	err := r.ParseMultipartForm(10 << 20) // 10 MB limit
+	if err != nil {
+		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		log.Println("Error parsing multipart form:", err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")         // Set the response content type to JSON.
-	if err := json.NewEncoder(w).Encode(results); err != nil { // Encode the results into JSON and write to the response.
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError) // Respond with a 500 Internal Server Error.
-		log.Println("Error encoding JSON response:", err)                          // Log any encoding errors.
+	files := r.MultipartForm.File["files"] // Collect the uploaded files from the form
+
+	var results []ScenarioProbability // Initialize a slice to hold results for each file
+
+	for _, f := range files {
+		// Open the uploaded file
+		file, err := f.Open()
+		if err != nil {
+			http.Error(w, "Failed to open uploaded file", http.StatusInternalServerError)
+			log.Println("Error opening file:", err)
+			return
+		}
+		defer file.Close() // Ensure the file is closed after processing
+
+		// Read the file contents
+		body, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, "Failed to read file contents", http.StatusInternalServerError)
+			log.Println("Error reading file contents:", err)
+			return
+		}
+
+		// Create a new strings.Reader from the file contents
+		reader := strings.NewReader(string(body))
+		uuid := &messages.UUID{}
+
+		// Analyze the Gherkin document for scenarios and their probabilities
+		result, err := analyzeGherkinDocument(reader, uuid)
+		if err != nil {
+			http.Error(w, "Failed to parse Gherkin document", http.StatusInternalServerError)
+			log.Println("Error parsing Gherkin document:", err)
+			return
+		}
+
+		// Append the results from this file to the main results
+		results = append(results, result...)
 	}
 
-	log.Println("Successfully analyzed Gherkin file and returned results.") // Log the successful processing of the request.
+	// Set the response content type to JSON and encode the results
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Println("Error encoding JSON response:", err)
+		return
+	}
+
+	log.Println("Successfully analyzed Gherkin files and returned results.")
 }
