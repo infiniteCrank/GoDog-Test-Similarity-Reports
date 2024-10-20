@@ -28,11 +28,8 @@
             overflow-y: auto;
             white-space: pre-wrap; /* Wrap text within the element */
         }
-        #namingIssues {
+        .error {
             color: red;
-        }
-        .success {
-            color: green;
         }
         #loader {
             display: none;
@@ -40,7 +37,18 @@
     </style>
 </head>
 <body>
-    <h1>Gherkin Feature File Optimizer</h1>
+    
+    <header>
+        <h1>Gherkin Feature File Optimizer</h1>
+        <!-- Navigation Menu -->
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="visualization.html">Visualization</a></li>
+                <li><a href="optimize.html">Optimize Gherkin Feature File</a></li>
+            </ul>
+        </nav>
+    </header>
     <form id="featureForm">
         <label for="featureFile">Select feature files (.feature):</label><br>
         <input type="file" id="featureFile" accept=".feature" required multiple><br><br>
@@ -62,7 +70,7 @@
             const fileInput = document.getElementById('featureFile');
             const checkNaming = document.getElementById('checkNaming').checked;
             const formData = new FormData();
-
+            
             // Append each selected file to the FormData
             for (let i = 0; i < fileInput.files.length; i++) {
                 formData.append('feature_file', fileInput.files[i]);
@@ -103,7 +111,6 @@
                 // Hide the loader
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('output').textContent = '';
-                // Error handling with appropriate messaging
                 document.getElementById('namingIssues').innerHTML = 'Error: ' + error.message;
                 document.getElementById('downloadBtn').style.display = 'none'; // Hide download button on error
             });
