@@ -139,6 +139,7 @@ func TestOptimizeFeatureHandlerWithNamingConventionCheck(t *testing.T) {
 	if len(res.NamingIssues) == 0 {
 		t.Error("Expected naming issues in the response, but found none.")
 	}
+
 	// Verify specific issues regarding the invalid scenario names
 	if !contains(res.NamingIssues, "Scenario 'Invalid' does not follow naming conventions") {
 		t.Error("Expected naming issue for 'Invalid' scenario not found.")

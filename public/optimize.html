@@ -3,43 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimize Feature File</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <script src="js/optimize.js" defer></script>
+    <title>Gherkin Feature File Optimizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        input[type="file"], button {
+            padding: 10px;
+            margin: 10px 0;
+        }
+        pre {
+            background-color: #efefef;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap; /* Wrap text within the element */
+        }
+        #namingIssues {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        #loader {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Optimize Gherkin Feature File</h1>
-        <p>Upload a .feature file to optimize it based on best practices.</p>
-        
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="visualization.html">Visualization</a></li>
-                <li><a href="optimize.html">Optimize Gherkin Feature File</a></li>
-                <li><a href="optimize-directory.html">Optimize All Gherkin Feature Files</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <div class="controls">
-            <form id="optimizeForm" enctype="multipart/form-data">
-                <input type="file" id="featureFile" name="featureFile" accept=".feature" required>
-                <label>
-                    <input type="checkbox" id="enableNamingChecks" name="enableNamingChecks" value="true">
-                    Enable Naming Checks
-                </label>
-                <button type="submit">Optimize Feature File</button>
-            </form>
-        </div>
-        <div id="resultContainer">
-            <h2>Optimized Feature File</h2>
-            <a id="downloadLink" style="display: none;">Download Optimized File</a>
-            <pre id="optimizedContent" style="white-space: pre-wrap;"></pre>
-        </div>
-    </main>
-    <footer>
-        <p>&copy; 2024 Optimize Feature File Tool. All rights reserved.</p>
-    </footer>
+    <h1>Gherkin Feature File Optimizer</h1>
+    <form id="featureForm">
+        <label for="featureFile">Select feature files (.feature):</label><br>
+        <input type="file" id="featureFile" accept=".feature" required multiple><br><br>
+        <label for="checkNaming">Check naming conventions</label>
+        <input type="checkbox" id="checkNaming" checked><br><br>
+        <button type="submit">Optimize</button>
+    </form>
+    
+    <h2>Optimized Output</h2>
+    <pre id="output"></pre>
+    <div id="namingIssues" class="error"></div>
+    <a id="downloadBtn" style="display:none;" href="#" download="optimized.feature">Download Optimized Feature File</a>
+    <div id="loader">Processing, please wait...</div>
+
+    <script>
+        document.getElementById('featureForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const fileInput = document.getElementById('featureFile');
+            const checkNaming = document.getElementById('checkNaming').checked;
+            const formData = new FormData();
+
+            // Append each selected file to the FormData
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('feature_file', fileInput.files[i]);
+            }
+            formData.append('check_naming', checkNaming);
+
+            // Show the loader
+            document.getElementById('loader').style.display = 'block';
+
+            fetch('/optimize', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide the loader
+                document.getElementById('loader').style.display = 'none';
+                
+                // Display optimized output
+                document.getElementById('output').textContent = data.optimized_content;
+                document.getElementById('downloadBtn').style.display = 'block';
+                document.getElementById('downloadBtn').href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.optimized_content);
+
+                // Display naming issues if any
+                const namingIssuesDiv = document.getElementById('namingIssues');
+                if (data.naming_issues && data.naming_issues.length > 0) {
+                    namingIssuesDiv.innerHTML = "Naming Issues:<br>" + data.naming_issues.join('<br>');
+                } else {
+                    namingIssuesDiv.innerHTML = '';
+                }
+            })
+            .catch(error => {
+                // Hide the loader
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('output').textContent = '';
+                // Error handling with appropriate messaging
+                document.getElementById('namingIssues').innerHTML = 'Error: ' + error.message;
+                document.getElementById('downloadBtn').style.display = 'none'; // Hide download button on error
+            });
+        });
+    </script>
 </body>
 </html>

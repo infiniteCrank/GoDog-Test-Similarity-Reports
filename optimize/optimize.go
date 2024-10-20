@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type Scenario struct {
@@ -37,7 +39,7 @@ func validateScenarioNames(scenarios []Scenario) []string {
 		if len(scenario.Name) == 0 {
 			issues = append(issues, "Scenario name cannot be empty")
 		}
-		if len(scenario.Name) < 10 { // Example check; adjust as per your naming conventions
+		if len(scenario.Name) < 10 { // Example check for length
 			issues = append(issues, fmt.Sprintf("Scenario '%s' does not follow naming conventions", scenario.Name))
 		}
 	}
@@ -67,45 +69,26 @@ func identifyCommonSteps(scenarios []Scenario) []string {
 	return sharedSteps
 }
 
-// Optimize scenarios, including support for Scenario Outlines with Examples
+// Optimize scenarios by merging identical ones
 func optimizeScenarios(scenarios []Scenario) ([]Scenario, []string) {
 	scenarioMap := make(map[string]*Scenario)
 
 	for _, scenario := range scenarios {
-		// If it's a Scenario Outline, handle the examples
-		if len(scenario.Data) > 0 {
-			for _, example := range scenario.Data {
-				newScenario := Scenario{
-					Name:  scenario.Name,
-					Steps: scenario.Steps,
-					Tags:  scenario.Tags,
-				}
+		key := strings.Join(scenario.Steps, "|")
 
-				// Replace placeholders in steps with actual example values
-				for i, step := range newScenario.Steps {
-					for key, value := range example {
-						step = strings.ReplaceAll(step, key, value)
-					}
-					newScenario.Steps[i] = step
-				}
-
-				key := strings.Join(newScenario.Steps, "|")
-				if existingScenario, found := scenarioMap[key]; found {
-					// Merge scenario data if it already exists
-					existingScenario.Data = append(existingScenario.Data, example)
-				} else {
-					newScenario.Data = []map[string]string{example}
-					scenarioMap[key] = &newScenario
-				}
-			}
+		// Check if the scenario already exists in the map
+		if existingScenario, found := scenarioMap[key]; found {
+			// If it exists, we can append data but do not overwrite existing steps
+			existingScenario.Data = append(existingScenario.Data, scenario.Data...)
+			existingScenario.Tags = append(existingScenario.Tags, scenario.Tags...) // Merge tags
 		} else {
-			// Regular scenario handling
-			key := strings.Join(scenario.Steps, "|")
-			if existingScenario, found := scenarioMap[key]; found {
-				existingScenario.Data = append(existingScenario.Data, nil) // May contain example data
-			} else {
-				scenarioMap[key] = &scenario // No examples
+			newScenario := &Scenario{
+				Name:  scenario.Name,
+				Steps: scenario.Steps,
+				Tags:  scenario.Tags,
+				Data:  scenario.Data, // Initialize with scenario Data
 			}
+			scenarioMap[key] = newScenario
 		}
 	}
 
@@ -146,7 +129,7 @@ func writeOptimizedContent(featureName string, optimizedScenarios []Scenario, co
 	return output.String()
 }
 
-// OptimizeFeatureHandler handles the upload and optimization of the feature files
+// OptimizeFeatureHandler handles the upload and optimization of one or more feature files
 func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -157,52 +140,76 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the file from the form input
-	file, _, err := r.FormFile("feature_file")
-	if err != nil {
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
+	var allScenarios []Scenario
+	errorsChan := make(chan error, 10) // Channel for error handling
+	var wg sync.WaitGroup              // WaitGroup to manage goroutines
 
-	// Read the content of the file
-	content, err := io.ReadAll(file)
-	if err != nil {
-		http.Error(w, "Error reading file content", http.StatusInternalServerError)
-		return
-	}
+	// Process multiple uploaded files
+	for _, fheaders := range r.MultipartForm.File {
+		for _, file := range fheaders {
+			wg.Add(1) // Increment wait group counter
 
-	// Split content into lines to parse scenarios
-	lines := strings.Split(string(content), "\n")
-	var scenarios []Scenario
-	var currentScenario Scenario
+			go func(fh *multipart.FileHeader) {
+				defer wg.Done() // Decrement counter when done
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "Scenario:") {
-			// Finish up the previous scenario
-			if currentScenario.Name != "" {
-				scenarios = append(scenarios, currentScenario) // Save previous scenario
-			}
-			currentScenario = Scenario{Name: strings.TrimSpace(strings.TrimPrefix(trimmed, "Scenario:"))}
-			currentScenario.Steps = []string{}
-		} else if strings.HasPrefix(trimmed, "@") {
-			// Handle tags
-			currentScenario.Tags = append(currentScenario.Tags, strings.TrimSpace(trimmed))
-		} else if strings.HasPrefix(trimmed, "Given") ||
-			strings.HasPrefix(trimmed, "When") ||
-			strings.HasPrefix(trimmed, "Then") {
-			currentScenario.Steps = append(currentScenario.Steps, trimmed)
+				// Open the uploaded file
+				uploadedFile, err := fh.Open()
+				if err != nil {
+					errorsChan <- fmt.Errorf("error opening file: %s, %v", fh.Filename, err)
+					return
+				}
+				defer uploadedFile.Close()
+
+				// Read the content of the file
+				content, err := io.ReadAll(uploadedFile)
+				if err != nil {
+					errorsChan <- fmt.Errorf("error reading file content: %s, %v", fh.Filename, err)
+					return
+				}
+
+				// Split content into lines to parse scenarios
+				lines := strings.Split(string(content), "\n")
+				var currentScenario Scenario
+
+				for _, line := range lines {
+					trimmed := strings.TrimSpace(line)
+					if strings.HasPrefix(trimmed, "Scenario:") {
+						// Finish collecting the previous scenario
+						if currentScenario.Name != "" {
+							allScenarios = append(allScenarios, currentScenario) // Save previous scenario
+						}
+						currentScenario = Scenario{Name: strings.TrimSpace(strings.TrimPrefix(trimmed, "Scenario:"))}
+						currentScenario.Steps = []string{}
+					} else if strings.HasPrefix(trimmed, "@") {
+						// Handle tags
+						currentScenario.Tags = append(currentScenario.Tags, strings.TrimSpace(trimmed))
+					} else if strings.HasPrefix(trimmed, "Given") ||
+						strings.HasPrefix(trimmed, "When") ||
+						strings.HasPrefix(trimmed, "Then") {
+						currentScenario.Steps = append(currentScenario.Steps, trimmed)
+					}
+				}
+
+				// Append the last collected scenario if it exists
+				if currentScenario.Name != "" {
+					allScenarios = append(allScenarios, currentScenario)
+				}
+			}(file) // Pass the file header to the goroutine
 		}
 	}
 
-	// Append the last collected scenario if it exists
-	if currentScenario.Name != "" {
-		scenarios = append(scenarios, currentScenario)
+	// Wait for all goroutines to finish
+	wg.Wait()
+	close(errorsChan) // Close the channel when done
+
+	// Check for errors after processing all files
+	for err := range errorsChan {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	// Validate the feature name (this could be more dynamic)
-	featureName := "User Login" // Set it to determine the relevant feature title
+	// Validate the feature name
+	featureName := "Combined Features" // Set to determine the relevant feature title
 	if err := validateFeatureName(featureName); err != nil {
 		http.Error(w, fmt.Sprintf("Feature validation error: %v", err), http.StatusBadRequest)
 		return
@@ -212,14 +219,14 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	checkNaming := r.FormValue("check_naming") == "true"
 	var namingIssues []string
 	if checkNaming {
-		namingIssues = validateScenarioNames(scenarios)
+		namingIssues = validateScenarioNames(allScenarios)
 	}
 
 	// Optimize scenarios and prepare optimized content
-	optimizedScenarios, commonSteps := optimizeScenarios(scenarios)
+	optimizedScenarios, commonSteps := optimizeScenarios(allScenarios)
 	optimizedContent := writeOptimizedContent(featureName, optimizedScenarios, commonSteps)
 
-	// Prepare response
+	// Prepare response structure
 	response := OptimizeResponse{
 		OptimizedContent: optimizedContent,
 		NamingIssues:     namingIssues,
