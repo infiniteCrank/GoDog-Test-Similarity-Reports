@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go-similarity-reports/analysis"
 	"go-similarity-reports/optimize"
-	"go-similarity-reports/statistics/visualizations"
+	"go-similarity-reports/visualizations"
 	"net/http"
 	"os"
 
@@ -19,6 +19,7 @@ func main() {
 	router.HandleFunc("/api/merged-test-journeys", visualizations.GetMergedTestJourneys).Methods("GET")
 
 	router.HandleFunc("/optimize", optimize.OptimizeFeatureHandler).Methods("POST")
+	router.HandleFunc("/analyze", analysis.HandleGherkin).Methods("POST")
 
 	// Serve static files from the public directory
 	fs := http.FileServer(http.Dir("public"))
