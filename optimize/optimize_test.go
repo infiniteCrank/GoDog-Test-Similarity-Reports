@@ -3,12 +3,24 @@ package optimize
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gorilla/mux"
 )
+
+// Helper function to read test feature files
+func readTestFile(filename string) string {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		fmt.Println("Error reading test file:", err)
+		return ""
+	}
+	return string(content)
+}
 
 // Test for validating feature name structure
 func TestValidateFeatureName(t *testing.T) {
@@ -49,10 +61,10 @@ func TestOptimizeFeatureHandler(t *testing.T) {
 	r.HandleFunc("/optimize", OptimizeFeatureHandler).Methods("POST")
 
 	featureContent := `Feature: User login
-    Scenario: Successful login
-        Given I have a valid username "user1"
-        When I perform the login action
-        Then I should see a welcome message`
+		Scenario: Successful login
+			Given I have a valid username "user1"
+			When I perform the login action
+			Then I should see a welcome message`
 
 	body := &bytes.Buffer{}
 	body.WriteString("feature_file=" + featureContent)
@@ -87,20 +99,20 @@ func TestOptimizeFeatureHandlerWithNamingConventionCheck(t *testing.T) {
 
 	// Prepare a sample feature content with naming issues
 	featureContent := `Feature: User login
-    Scenario: Successful login
-        Given I have a valid username "user1"
-        When I perform the login action
-        Then I should see a welcome message
-
-    Scenario: Invalid
-        Given I have a valid username "user2"
-        When I perform the login action
-        Then I should see a welcome message
-
-    Scenario:
-        Given I have a valid username "user3"
-        When I perform the login action
-        Then I should see a welcome message`
+		Scenario: Successful login
+			Given I have a valid username "user1"
+			When I perform the login action
+			Then I should see a welcome message
+	
+		Scenario: Invalid
+			Given I have a valid username "user2"
+			When I perform the login action
+			Then I should see a welcome message
+	
+		Scenario:
+			Given I have a valid username "user3"
+			When I perform the login action
+			Then I should see a welcome message`
 
 	// Create a new request with the feature content
 	body := &bytes.Buffer{}

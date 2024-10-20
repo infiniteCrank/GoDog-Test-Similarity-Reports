@@ -13,7 +13,7 @@ import (
 type Scenario struct {
 	Name  string
 	Steps []string
-	Tags  []string            // Include tags for each scenario
+	Tags  []string
 	Data  []map[string]string // Holds example data for the scenarios
 }
 
@@ -67,23 +67,45 @@ func identifyCommonSteps(scenarios []Scenario) []string {
 	return sharedSteps
 }
 
-// Optimize scenarios by merging identical ones
+// Optimize scenarios, including support for Scenario Outlines with Examples
 func optimizeScenarios(scenarios []Scenario) ([]Scenario, []string) {
 	scenarioMap := make(map[string]*Scenario)
 
 	for _, scenario := range scenarios {
-		key := strings.Join(scenario.Steps, "|")
+		// If it's a Scenario Outline, handle the examples
+		if len(scenario.Data) > 0 {
+			for _, example := range scenario.Data {
+				newScenario := Scenario{
+					Name:  scenario.Name,
+					Steps: scenario.Steps,
+					Tags:  scenario.Tags,
+				}
 
-		if existingScenario, found := scenarioMap[key]; found {
-			// Append existing only scenario's steps if duplicates are found
-			existingScenario.Steps = append(existingScenario.Steps, scenario.Steps...)
-		} else {
-			newScenario := &Scenario{
-				Name:  scenario.Name,
-				Steps: scenario.Steps,
-				Tags:  scenario.Tags,
+				// Replace placeholders in steps with actual example values
+				for i, step := range newScenario.Steps {
+					for key, value := range example {
+						step = strings.ReplaceAll(step, key, value)
+					}
+					newScenario.Steps[i] = step
+				}
+
+				key := strings.Join(newScenario.Steps, "|")
+				if existingScenario, found := scenarioMap[key]; found {
+					// Merge scenario data if it already exists
+					existingScenario.Data = append(existingScenario.Data, example)
+				} else {
+					newScenario.Data = []map[string]string{example}
+					scenarioMap[key] = &newScenario
+				}
 			}
-			scenarioMap[key] = newScenario
+		} else {
+			// Regular scenario handling
+			key := strings.Join(scenario.Steps, "|")
+			if existingScenario, found := scenarioMap[key]; found {
+				existingScenario.Data = append(existingScenario.Data, nil) // May contain example data
+			} else {
+				scenarioMap[key] = &scenario // No examples
+			}
 		}
 	}
 
@@ -92,7 +114,7 @@ func optimizeScenarios(scenarios []Scenario) ([]Scenario, []string) {
 		optimizedScenarios = append(optimizedScenarios, *v)
 	}
 
-	// Identify common steps that can be used in a Background section.
+	// Identify common steps for Background
 	commonSteps := identifyCommonSteps(scenarios)
 
 	return optimizedScenarios, commonSteps
@@ -111,6 +133,7 @@ func writeOptimizedContent(featureName string, optimizedScenarios []Scenario, co
 		}
 	}
 
+	// Iterate over the optimized scenarios and write them
 	for _, scenario := range optimizedScenarios {
 		output.WriteString("Scenario: " + scenario.Name + "\n")
 
@@ -123,6 +146,7 @@ func writeOptimizedContent(featureName string, optimizedScenarios []Scenario, co
 	return output.String()
 }
 
+// OptimizeFeatureHandler handles the upload and optimization of the feature files
 func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -133,6 +157,7 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Retrieve the file from the form input
 	file, _, err := r.FormFile("feature_file")
 	if err != nil {
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
@@ -140,6 +165,7 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// Read the content of the file
 	content, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "Error reading file content", http.StatusInternalServerError)
@@ -154,14 +180,15 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "Scenario:") {
+			// Finish up the previous scenario
 			if currentScenario.Name != "" {
 				scenarios = append(scenarios, currentScenario) // Save previous scenario
 			}
 			currentScenario = Scenario{Name: strings.TrimSpace(strings.TrimPrefix(trimmed, "Scenario:"))}
 			currentScenario.Steps = []string{}
 		} else if strings.HasPrefix(trimmed, "@") {
-			// Handle scenario tags
-			currentScenario.Tags = append(currentScenario.Tags, trimmed)
+			// Handle tags
+			currentScenario.Tags = append(currentScenario.Tags, strings.TrimSpace(trimmed))
 		} else if strings.HasPrefix(trimmed, "Given") ||
 			strings.HasPrefix(trimmed, "When") ||
 			strings.HasPrefix(trimmed, "Then") {
@@ -169,13 +196,13 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Add the last collected scenario
+	// Append the last collected scenario if it exists
 	if currentScenario.Name != "" {
 		scenarios = append(scenarios, currentScenario)
 	}
 
-	// Validate the feature name (static in this example; you may want to make this dynamic)
-	featureName := "User Login" // Static feature name; set appropriately
+	// Validate the feature name (this could be more dynamic)
+	featureName := "User Login" // Set it to determine the relevant feature title
 	if err := validateFeatureName(featureName); err != nil {
 		http.Error(w, fmt.Sprintf("Feature validation error: %v", err), http.StatusBadRequest)
 		return
@@ -192,7 +219,7 @@ func OptimizeFeatureHandler(w http.ResponseWriter, r *http.Request) {
 	optimizedScenarios, commonSteps := optimizeScenarios(scenarios)
 	optimizedContent := writeOptimizedContent(featureName, optimizedScenarios, commonSteps)
 
-	// Prepare response structure
+	// Prepare response
 	response := OptimizeResponse{
 		OptimizedContent: optimizedContent,
 		NamingIssues:     namingIssues,
